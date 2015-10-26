@@ -142,6 +142,10 @@
     "places": {
       "access": "readwrite",
       "description": "Stores data about browsing history."
+    },
+    "notifications_count": {
+      "access": "readwrite",
+      "description": "Stores notifications count per app basis for the Homescreen tiles."
     }
   },
   "datastores-access": {

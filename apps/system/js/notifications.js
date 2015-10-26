@@ -1,4 +1,4 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- /
+/* -*- Mode: js; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- /
 /* vim: set shiftwidth=2 tabstop=2 autoindent cindent expandtab: */
 
 'use strict';
@@ -10,6 +10,10 @@ var NotificationScreen = {
   TAP_THRESHOLD: 10,
   SCROLL_THRESHOLD: 10,
   CLEAR_DELAY: 80,
+  // proto impl of Notifications counters per app basis
+  STORE_NAME: 'notifications_count',
+  _storeRef: null,
+  _countersPerApp: {},
 
   _notification: null,
   _containerWidth: null,
@@ -122,6 +126,86 @@ var NotificationScreen = {
     }, function(err) {
       console.error('VersionHelper failed to lookup version settings.');
     });
+
+
+  },
+
+  getStore: function ns_getStore() {
+    return new Promise(resolve => {
+      if (this._storeRef) {
+        return resolve(this._storeRef);
+      }
+      navigator.getDataStores(this.STORE_NAME).then(stores => {
+        this._storeRef = stores[0];
+        return resolve(this._storeRef);
+      });
+    });
+  },
+
+  increaseAppCounter: function ns_udpateCounter(detail) {
+    this.debug('increaseAppCounter('+JSON.stringify(detail)+')');
+    this.debug('has url = ' + this._countersPerApp.hasOwnProperty(detail.manifestURL));
+    this._countersPerApp.hasOwnProperty(detail.manifestURL) ?
+      this._countersPerApp[detail.manifestURL] += 1 :
+      this._countersPerApp[detail.manifestURL] = 1;
+
+    function addCounter(store, name, count) {
+      store.add(count, name).then( id => {
+        this.debug('stored ' + id);
+      });
+    };
+
+    function updCounter(store, name, count) {
+      store.put(count, name).then( id => {
+        this.debug('updated ' + id);
+      });
+    };
+
+    this.getStore().then( store => {
+      store.getLength().then( storeLength => {
+        if(storeLength == 0) {
+          this.debug('empty store');
+          Object.getOwnPropertyNames(this._countersPerApp).forEach( item => {
+            addCounter.call(this, store, item, this._countersPerApp[item]);
+          });
+        } else {
+          this.debug('non empty store');
+          updCounter.call(this, store, detail.manifestURL, this._countersPerApp[detail.manifestURL]);
+        }
+      });
+    });
+  },
+
+  decreaseAppCounter: function ns_decAppCounter(appURL) {
+    // very rough implementation - easy to get negative count.
+    if (this._countersPerApp.hasOwnProperty(appURL)) {
+      this._countersPerApp[appURL] -= 1;
+    } else {
+      this.debug('WARNING trying to decrease counter for uncnown URL');
+      return;
+    }
+
+    this.getStore().then(store => {
+      if (this._countersPerApp[appURL] > 0) {
+        this.debug('non empty store');
+        store.put(this._countersPerApp[appURL], appURL).then( id => {
+          this.debug('decremented ' + id);
+        });
+      } else {
+        //do we need to delete URLs for which no notifications left?
+        store.remove(appURL).then( success => {
+          if (success) {
+            this.debug('deleted ' + appURL);
+          } else {
+            this.debug('Something went wrong with deletion of ' + appURL);
+          }
+        });
+      }
+    });
+  },
+
+  debug: function ns_debug(msg) {
+    console.log('[el] ' + msg);
   },
 
   handleEvent: function ns_handleEvent(evt) {
@@ -131,6 +215,7 @@ var NotificationScreen = {
         switch (detail.type) {
           case 'desktop-notification':
             this.addNotification(detail);
+            this.increaseAppCounter(detail);
             if (this.isResending) {
               this.resendReceived++;
               this.isResending = (this.resendReceived < this.resendExpecting);
@@ -672,6 +757,7 @@ var NotificationScreen = {
 
   closeNotification: function ns_closeNotification(notificationNode) {
     var notificationId = notificationNode.dataset.notificationId;
+    this.debug('closeNotification called for ID = ' + notificationId);
     this.removeNotification(notificationId);
   },
 
@@ -699,6 +785,8 @@ var NotificationScreen = {
     var notifSelector = '[data-notification-id="' + notificationId + '"]';
     var notificationNode = this.container.querySelector(notifSelector);
     if (notificationNode) {
+      this.decreaseAppCounter(notificationNode.dataset.manifestURL);
+
       notificationNode.remove();
     }
     var event = document.createEvent('CustomEvent');
@@ -755,6 +843,12 @@ var NotificationScreen = {
       notification.classList.add('disappearing-via-clear-all');
       notification.style.transform = '';
     }
+
+    console.log('[el] try to cleanup notifDataStore completely');
+    this._countersPerApp = Object.create(Object);
+    this.getStore().then(store => {
+      store.clear();
+    });
   },
 
   clearLockScreen: function ns_clearLockScreen() {
