@@ -50,7 +50,7 @@
   transition: all 0.5s;
 }
 
-#pin-apps-list .pin-app-item .unread_notif {
+#pinned-apps-list .pinned-app-item .unread_notif {
   position: relative;
   /* remove magic and put proper positioning & dynamic width change depending on characters count */
   top: -7rem;
@@ -67,7 +67,7 @@
   font-weight: bold;
 }
 
-#pin-apps-list .selected .unread_notif {
+#pinned-apps-list .selected .unread_notif {
   min-width: 2rem;
   height: 3rem;
   border-radius: 1.5rem;
@@ -77,8 +77,8 @@
   width: 3rem;
 }
 
-#pin-apps-list .pin-app-icon,
-#pin-apps-list input[type="button"] {
+#pinned-apps-list .pinned-app-icon,
+#pinned-apps-list input[type="button"] {
   width: 5rem;
   height: 5rem;
   transition: all 0.5s;
