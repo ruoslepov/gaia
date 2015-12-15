@@ -14,6 +14,7 @@ var router = require('router');
 require('dom!modify-account-view');
 
 var DEFAULT_AUTH_TYPE = 'basic';
+var DEFAULT_FOCUS_FIELD = 'user';
 var OAUTH_AUTH_CREDENTIALS = [
   'client_id',
   'scope',
@@ -337,6 +338,8 @@ ModifyAccount.prototype = {
         'text' : usernameType;
 
     this.header.runFontFitSoon();
+
+    this.setFocus(this.fields[DEFAULT_FOCUS_FIELD]);
  },
 
   destroy: function() {
@@ -407,6 +410,10 @@ ModifyAccount.prototype = {
       this._oauthDialog.close();
       this._oauthDialog = null;
     }
+  },
+
+  setFocus: function(field) {
+    setTimeout(function() { field.focus(); }, 0);
   }
 };
 
