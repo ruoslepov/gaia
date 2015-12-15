@@ -115,7 +115,10 @@ ActivityController.prototype.onMessage = function(activity) {
   };
 
   this.activity = activity;
-  this.configureMode(activity);
+
+  // Do not configure if this activity is record
+  if (name != 'record') { this.configureMode(activity); }
+
   this.app.emit('activity', data);
   this.app.emit('activity:' + name, data);
 };
